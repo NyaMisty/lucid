@@ -863,16 +863,26 @@ class MicrocodeView(ida_kernwin.simplecustviewer_t):
         ins_token = self.model.mtext.get_ins_for_line(self.model.current_line)
         if not ins_token:
             return False
-
-        class MyHandler(ida_kernwin.action_handler_t):
+        class ViewHandler(ida_kernwin.action_handler_t):
             def activate(self, ctx):
                 controller.show_subtree(ins_token)
             def update(self, ctx):
                 return ida_kernwin.AST_ENABLE_ALWAYS
+            
+        import pyperclip
+        lines = self.model.mtext.lines
+        class CopyHandler(ida_kernwin.action_handler_t):
+            def activate(self, ctx):
+                pyperclip.copy("\n".join([line.text for line in lines]))
+                print("done")
+            def update(self, ctx):
+                return ida_kernwin.AST_ENABLE_ALWAYS
 
         # inject the 'View subtree' action into the right click context menu
-        desc = ida_kernwin.action_desc_t(None, 'View subtree', MyHandler())
-        ida_kernwin.attach_dynamic_action_to_popup(form, popup_handle, desc, None)
+        desc1 = ida_kernwin.action_desc_t(None, 'View subtree', ViewHandler())
+        desc2 = ida_kernwin.action_desc_t(None, 'Copy microcode', CopyHandler())
+        ida_kernwin.attach_dynamic_action_to_popup(form, popup_handle, desc1, None)
+        ida_kernwin.attach_dynamic_action_to_popup(form, popup_handle, desc2, None)
         
         return True
 
