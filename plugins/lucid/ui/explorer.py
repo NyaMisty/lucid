@@ -15,6 +15,7 @@ from lucid.util.python import register_callback, notify_callback, CallbackHandle
 from lucid.util.hexrays import get_microcode, get_mmat, get_mmat_name, get_mmat_levels 
 from lucid.util.options import OptionListener, OptionProvider
 from lucid.microtext import MicrocodeOptions, MicrocodeText, MicroInstructionToken, MicroOperandToken, AddressToken, BlockNumberToken, translate_mtext_position, remap_mtext_position
+from lucid.ui.graph import show_microcode_graph
 
 #------------------------------------------------------------------------------
 # Microcode Explorer
@@ -885,6 +886,12 @@ class MicrocodeView(ida_kernwin.simplecustviewer_t):
         ida_kernwin.attach_dynamic_action_to_popup(form, popup_handle, desc2, None)
         
         return True
+
+    def OnKeydown(self, vkey, shift):
+        if vkey == ord("G"):
+            func_name = ida_funcs.get_func_name(self.model.current_function)
+            mmat_name = get_mmat_name(self.model.active_maturity)
+            show_microcode_graph(self.model.mtext.mba, func_name + ": " + mmat_name, None)
 
 #-----------------------------------------------------------------------------
 # Util
