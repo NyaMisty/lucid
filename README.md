@@ -4,6 +4,23 @@
 <img alt="Lucid Plugin" src="screenshots/lucid_demo.gif"/>
 </p>
 
+## ======== Reloaded ========
+
+This branch merged most recent forks based on @Fireboyd78's work.
+
+Introduced these new features:
+- IDA 8.x ~ IDA 9.2 support
+- Block graph view (Press "G" to see)
+- Store selected minsn/mop to Python variable
+- Copy microcode text to clipboard
+
+Credits goes to:
+- @Fireboyd78: IDA 9.0 support & Superb performance improvement & Various fixes
+- @Ylarod: IDA 9.2 support
+- @NyaMisty: Store to IDAPython
+- @Thehepta: Block graph view
+- @lich4: Copy microcode feature
+
 ## Overview
 
 Lucid is a developer-oriented [IDA Pro](https://www.hex-rays.com/products/ida/) plugin for exploring the Hex-Rays microcode. It was designed to provide a seamless, interactive experience for studying microcode transformations in the decompiler pipeline.
