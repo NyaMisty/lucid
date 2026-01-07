@@ -878,12 +878,25 @@ class MicrocodeView(ida_kernwin.simplecustviewer_t):
                 print("done")
             def update(self, ctx):
                 return ida_kernwin.AST_ENABLE_ALWAYS
+        
+        class StoreToPythonHandler(ida_kernwin.action_handler_t):
+            def activate(self, ctx):
+                import sys
+                if '__main__' not in sys.modules:
+                    print("[-] Could not find __main__ module!")
+                    return
+                insn_copy = ida_hexrays.minsn_t(ins_token.insn)
+                setattr(sys.modules['__main__'], 'mins', insn_copy)
+            def update(self, ctx):
+                return ida_kernwin.AST_ENABLE_ALWAYS
 
         # inject the 'View subtree' action into the right click context menu
         desc1 = ida_kernwin.action_desc_t(None, 'View subtree', ViewHandler())
         desc2 = ida_kernwin.action_desc_t(None, 'Copy microcode', CopyHandler())
+        desc3 = ida_kernwin.action_desc_t(None, 'Store to IDAPython "mins" variable', StoreToPythonHandler())
         ida_kernwin.attach_dynamic_action_to_popup(form, popup_handle, desc1, None)
         ida_kernwin.attach_dynamic_action_to_popup(form, popup_handle, desc2, None)
+        ida_kernwin.attach_dynamic_action_to_popup(form, popup_handle, desc3, None)
         
         return True
 

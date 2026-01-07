@@ -114,6 +114,10 @@ class MOPHelper:
 #    clean it up when motivation and time permits.....
 #
 
+class MicroSubtreeItem():
+    def __init__(self, typ, obj):
+        self.typ = typ
+        self.obj = obj
 class MicroSubtreeView(ida_graph.GraphViewer):
     """
     Render the subtree of an instruction.
@@ -126,10 +130,65 @@ class MicroSubtreeView(ida_graph.GraphViewer):
         self.next_insn = None
         self.controller = controller
         self._populated = False
+        self.node_id_map = {}
         
         # XXX: these will cause crashes if placed here!
         #self.controller.model.position_changed += self.update_insn
         #self.controller.model.maturity_changed += self.update_insn
+    
+    def _AddNode(self, text, type, obj):
+        item = MicroSubtreeItem(type, obj)
+        node_id = self.AddNode(text)
+        self.node_id_map[node_id] = item
+        return node_id
+        
+    def OnPopup(self, form, popup_handle):
+        widget = self.GetWidget()
+        gv = ida_graph.get_graph_viewer(widget)
+        sgs = ida_graph.screen_graph_selection_t()
+        if not ida_graph.viewer_get_selection(gv, sgs):
+            return False
+        
+        selections = list(sgs)
+        if len(selections) == 0:
+            return False
+        elif len(selections) > 1:
+            return False
+        
+        sel = selections[0]
+        if not sel.is_node:
+            return False
+        node_id = selections[0].node
+        if node_id not in self.node_id_map:
+            return False
+        
+        item = self.node_id_map[node_id]
+
+        class StoreToPythonHandler(ida_kernwin.action_handler_t):
+            def activate(self, ctx):
+                import sys
+                if '__main__' not in sys.modules:
+                    print("[-] Could not find __main__ module!")
+                    return
+                if item.typ == 'mop':
+                    mop_copy = ida_hexrays.mop_t(item.obj)
+                    setattr(sys.modules['__main__'], 'mop', mop_copy)
+                elif item.typ == 'minsn':
+                    insn_copy = ida_hexrays.minsn_t(item.obj)
+                    setattr(sys.modules['__main__'], 'mins', insn_copy)
+                else:
+                    print("[-] Unknown item type!")
+                    return
+            def update(self, ctx):
+                return ida_kernwin.AST_ENABLE_ALWAYS
+    
+        storeName = "Store to IDAPython"
+        if item.typ == 'mop':
+            storeName += ' "mop" varable'
+        elif item.typ == 'minsn':
+            storeName += ' "mins" varable'
+        desc1 = ida_kernwin.action_desc_t(None, storeName, StoreToPythonHandler())
+        ida_kernwin.attach_dynamic_action_to_popup(form, popup_handle, desc1, None)
         
     def update_insn(self):
         insn_token = self.controller.model.mtext.get_ins_for_line(self.controller.model.current_line)
@@ -208,7 +267,7 @@ class MicroSubtreeView(ida_graph.GraphViewer):
             text += ' \n ' + mop.d._print() + " "
         else:
             text += ' \n ' + mop._print() + " "
-        node_id = self.AddNode(text)
+        node_id = self._AddNode(text, "mop", mop)
         self.AddEdge(parent, node_id)
 
         # result of another instruction
@@ -238,7 +297,7 @@ class MicroSubtreeView(ida_graph.GraphViewer):
         if not insn:
             return None
         text = " %s \n %s " % (get_mcode_name(insn.opcode), insn._print())
-        node_id = self.AddNode(text)
+        node_id = self._AddNode(text, "minsn", insn)
         self._insert_mop(insn.l, node_id)
         self._insert_mop(insn.r, node_id)
         self._insert_mop(insn.d, node_id)
@@ -272,6 +331,7 @@ class MicroSubtreeView(ida_graph.GraphViewer):
         widget = ida_kernwin.PluginForm.TWidgetToPyQtWidget(twidget)
         bg_color = widget.property("line_bg_default") # disassembler bg color
         self._node_color = bg_color.blue() << 16 | bg_color.green() << 8 | bg_color.red()
+        self.node_id_map = {}
         node_id = self._insert_insn(self.insn)
         self._populated = True
         return True
