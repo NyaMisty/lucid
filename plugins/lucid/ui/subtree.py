@@ -1,3 +1,4 @@
+from ast import Import
 import ida_graph
 import ida_moves
 import ida_hexrays
@@ -124,8 +125,11 @@ class MicroSubtreeView(ida_graph.GraphViewer):
     """
     WINDOW_TITLE = "Sub-instruction Graph"
 
-    def __init__(self, insn, controller):
+    def __init__(self, mba, insn, controller):
         super(MicroSubtreeView, self,).__init__(self.WINDOW_TITLE, True)
+        self.mba = mba
+        self.next_mba = None
+        self.mba_index = None
         self.insn = insn
         self.next_insn = None
         self.controller = controller
@@ -181,6 +185,29 @@ class MicroSubtreeView(ida_graph.GraphViewer):
                     return
             def update(self, ctx):
                 return ida_kernwin.AST_ENABLE_ALWAYS
+        
+        parent = self
+        from PyQt5.QtGui import QGuiApplication, QClipboard
+        class GetPathHandler(ida_kernwin.action_handler_t):
+            def activate(self, ctx):
+                try:
+                    import hexrays_microcode_path
+                except ImportError:
+                    print("[-] Could not find hexrays_microcode_path module!")
+                    return
+                if not parent.mba_index:
+                    parent.mba_index = hexrays_microcode_path.MbaDFSIndex(parent.mba).build()
+                node = parent.mba_index.find(item.obj)
+                if not node:
+                    print("[-] Could not find item in microcode path index!")
+                    return
+                path = node.path
+                clipboard = QGuiApplication.clipboard()
+                clipboard.setText(repr(path))
+
+            def update(self, ctx):
+                return ida_kernwin.AST_ENABLE_ALWAYS
+    
     
         storeName = "Store to IDAPython"
         if item.typ == 'mop':
@@ -188,13 +215,17 @@ class MicroSubtreeView(ida_graph.GraphViewer):
         elif item.typ == 'minsn':
             storeName += ' "mins" varable'
         desc1 = ida_kernwin.action_desc_t(None, storeName, StoreToPythonHandler())
+        desc2 = ida_kernwin.action_desc_t(None, "Copy path to this mop/minsn", GetPathHandler())
         ida_kernwin.attach_dynamic_action_to_popup(form, popup_handle, desc1, None)
+        ida_kernwin.attach_dynamic_action_to_popup(form, popup_handle, desc2, None)
+        
         
     def update_insn(self):
         insn_token = self.controller.model.mtext.get_ins_for_line(self.controller.model.current_line)
         if insn_token is None or insn_token.insn == self.insn:
             return
         
+        self.next_mba = self.controller.model.mtext.mba
         self.next_insn = insn_token.insn
         
         gv = ida_graph.get_graph_viewer(self.GetWidget())
@@ -318,6 +349,9 @@ class MicroSubtreeView(ida_graph.GraphViewer):
         if self.next_insn:
             self.insn = self.next_insn
             self.next_insn = None
+            self.mba = self.next_mba
+            self.next_mba = None
+            self.mba_index = None
             self._populated = False
         
         if self._populated:

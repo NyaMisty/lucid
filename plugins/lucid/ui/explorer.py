@@ -67,7 +67,7 @@ class MicrocodeExplorer(object):
             self.graph.show()
             return
         
-        graph = MicroSubtreeView(insn_token.insn, self)
+        graph = MicroSubtreeView(self.model.mtext.mba, insn_token.insn, self)
         graph.show()
         
         self.graph = graph
