@@ -870,11 +870,12 @@ class MicrocodeView(ida_kernwin.simplecustviewer_t):
             def update(self, ctx):
                 return ida_kernwin.AST_ENABLE_ALWAYS
             
-        import pyperclip
+        from PyQt5.QtGui import QGuiApplication, QClipboard
         lines = self.model.mtext.lines
         class CopyHandler(ida_kernwin.action_handler_t):
             def activate(self, ctx):
-                pyperclip.copy("\n".join([line.text for line in lines]))
+                clipboard = QGuiApplication.clipboard()
+                clipboard.setText("\n".join([line.text for line in lines]))
                 print("done")
             def update(self, ctx):
                 return ida_kernwin.AST_ENABLE_ALWAYS
