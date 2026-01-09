@@ -11,10 +11,16 @@ def get_microcode(func, maturity):
     """
     Return the mba_t of the given function at the specified maturity.
     """
-    mbr = ida_hexrays.mba_ranges_t(func)
     hf = ida_hexrays.hexrays_failure_t()
+    # ida_hexrays.mark_cfunc_dirty(func.start_ea)
+    if maturity == MMAT_DECOMPILE:
+        cfunc = ida_hexrays.decompile(func, hf, ida_hexrays.DECOMP_NO_WAIT)
+        if not cfunc:
+            print("0x%08X: %s" % (hf.errea, hf.desc()))
+        mba = cfunc.mba
+        return mba
+    mbr = ida_hexrays.mba_ranges_t(func)
     ml = ida_hexrays.mlist_t()
-    ida_hexrays.mark_cfunc_dirty(func.start_ea)
     mba = ida_hexrays.gen_microcode(mbr, hf, ml, ida_hexrays.DECOMP_NO_WAIT | ida_hexrays.DECOMP_ALL_BLKS, maturity)
     if not mba:
         print("0x%08X: %s" % (hf.errea, hf.desc()))
@@ -49,6 +55,9 @@ def get_all_vdui():
 #-----------------------------------------------------------------------------
 
 MMAT = sorted([(getattr(ida_hexrays, x), x) for x in filter(lambda y: y.startswith('MMAT_'), dir(ida_hexrays))])[1:]
+MMAT_DECOMPILE = MMAT[-1][0] + 1 # Add a fake maturity to see actual MBA used in cfunc
+MMAT += [(MMAT_DECOMPILE, 'MMAT_DECOMPILE')]
+
 MOPT = [(getattr(ida_hexrays, x), x) for x in filter(lambda y: y.startswith('mop_'), dir(ida_hexrays))]
 MCODE = sorted([(getattr(ida_hexrays, x), x) for x in filter(lambda y: y.startswith('m_'), dir(ida_hexrays))])
 
